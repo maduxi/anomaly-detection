@@ -22,13 +22,4 @@ public class SensorRead {
     public long getTime() {
         return time;
     }
-
-    @Override
-    public String toString() {
-        return "SensorRead{" +
-                "time=" + time +
-                ", sensor='" + sensor + '\'' +
-                ", read=" + read +
-                '}';
-    }
 }

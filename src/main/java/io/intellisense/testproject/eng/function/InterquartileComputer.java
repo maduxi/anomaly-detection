@@ -20,13 +20,19 @@ public class InterquartileComputer extends RichMapFunction<SensorRead, DataPoint
     final int MIN_DATAPOINTS = 100;
     private transient ValueState<ArrayList<Double>> lastItems;
 
+    /**
+     * Will return a DataPoint with score based on the iqr of the last 100 values.
+     *
+     * @param sensorRead
+     * @return
+     * @throws Exception
+     */
     @Override
     public DataPoint map(SensorRead sensorRead) throws Exception {
         ArrayList<Double> value = lastItems.value();
         DataPoint dp;
         Instant time = new Timestamp(sensorRead.getTime()).toInstant();
-        //We dont want to give false alerts based on few samples
-
+        //We dont want to give false alerts based on few samples. Set some defaults.
         if (value.size() < MIN_DATAPOINTS) {
             value.add(0, sensorRead.getRead());
             lastItems.update(value);
@@ -36,16 +42,17 @@ public class InterquartileComputer extends RichMapFunction<SensorRead, DataPoint
             value.remove(value.size() - 1);
             value.add(0, sensorRead.getRead());
             lastItems.update(value);
-            dp = new DataPoint(sensorRead.getSensor(), time, getScore(iqr));
+            dp = new DataPoint(sensorRead.getSensor(), time, getScore(sensorRead.getRead(), iqr));
         }
         return dp;
     }
 
-    private Double getScore(double iqr) {
+
+    protected Double getScore(double read, double iqr) {
         Double result;
-        if (iqr < 1.5) {
+        if (read < iqr * 1.5) {
             result = 0D;
-        } else if (iqr >= 3) {
+        } else if (read > iqr * 3) {
             result = 1D;
         } else {
             result = 0.5D;
@@ -53,7 +60,13 @@ public class InterquartileComputer extends RichMapFunction<SensorRead, DataPoint
         return result;
     }
 
-    private double getIqr(List<Double> items) {
+    /**
+     * Will return the iqr for a list of numbers.
+     *
+     * @param items
+     * @return
+     */
+    protected double getIqr(List<Double> items) {
         double[] data = items.stream().filter(i -> i != null).mapToDouble(i -> i).toArray();
         DescriptiveStatistics da = new DescriptiveStatistics(data);
         return da.getPercentile(75) - da.getPercentile(25);

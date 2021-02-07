@@ -3,7 +3,7 @@ package io.intellisense.testproject.eng.jobs;
 import io.intellisense.testproject.eng.datasource.CsvDatasource;
 import io.intellisense.testproject.eng.function.InterquartileComputer;
 import io.intellisense.testproject.eng.function.SensorRead;
-import io.intellisense.testproject.eng.function.Transformer;
+import io.intellisense.testproject.eng.function.Splitter;
 import io.intellisense.testproject.eng.model.DataPoint;
 import io.intellisense.testproject.eng.sink.influxdb.InfluxDBSink;
 import lombok.extern.slf4j.Slf4j;
@@ -40,6 +40,7 @@ public class AnomalyDetectionJob {
         // ...you can add here whatever you consider necessary for robustness
         final StreamExecutionEnvironment env = StreamExecutionEnvironment.getExecutionEnvironment();
         env.setStreamTimeCharacteristic(TimeCharacteristic.EventTime);
+        // We could increase this value to use more than one worker.
         env.setParallelism(configProperties.getInt("flink.parallelism", 1));
         env.getConfig().setGlobalJobParameters(configProperties);
 
@@ -51,9 +52,13 @@ public class AnomalyDetectionJob {
         final DataStream<Row> sourceStream = csvDataSource.getDataStream(env)
                 .assignTimestampsAndWatermarks(watermarkStrategy)
                 .name("datasource-operator");
+        // Split the csv line with 10 sensors to individual sensor readings
+        final DataStream<SensorRead> splitSensors = Splitter.getSplitSensors(sourceStream);
 
-        final DataStream<SensorRead> splitSensors = Transformer.getSplitSensors(sourceStream);
+        // Key - Value the sensor readings, so each reading ends up in one partition.
         final KeyedStream<SensorRead, String> partitioned = splitSensors.keyBy(value -> value.getSensor());
+
+        // Compute DataPoints for each reading, with the score based on the iqr for las 100 readings
         SingleOutputStreamOperator<DataPoint> scoredSensorReading = partitioned.map(new InterquartileComputer());
 
         // Sink

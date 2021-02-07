@@ -16,7 +16,6 @@ public class CsvDatasource {
     public CsvTableSource getCsvSource() {
         return CsvTableSource.builder()
                 .path(CsvDatasource.class.getClassLoader().getResource(dataset).getPath())
-                //.path(dataset)
                 .ignoreFirstLine()
                 .field("time", DataTypes.STRING())
                 .field("Sensor-1", DataTypes.STRING())

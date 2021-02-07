@@ -10,10 +10,10 @@ import org.apache.flink.util.Collector;
 import java.sql.Timestamp;
 import java.time.Instant;
 
-public class Transformer {
+public class Splitter {
 
     /**
-     *
+     * This method will get several sensor readings together, and split them into individual sensor readings.
      * @param sourceStream
      * @return
      */
