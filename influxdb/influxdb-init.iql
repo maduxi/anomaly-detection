@@ -1,1 +1,3 @@
+-- initialize database
+
 CREATE DATABASE anomaly_detection;
